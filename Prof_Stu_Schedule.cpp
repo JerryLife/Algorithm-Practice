@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <tuple>
 
 using namespace std;
 
@@ -35,7 +36,7 @@ public:
     int get_weight(int src_node, int dst_node);
     void change_weight(int src_node, int dst_node, int offset);
     bool greedy_bfs(int s, int t, int parent[]);
-    static int max_flow(Graph &graph, int s, int t);
+    static vector<pair<int, int>> max_flow(Graph &graph, int s, int t);
     ~Graph() = default;
 };
 
@@ -139,16 +140,22 @@ bool Graph::greedy_bfs(int s, int t, int parent[]) {
     return visited[t];  // return if destination is visited
 }
 
-int Graph::max_flow(Graph &graph, int s, int t) {
+vector<pair<int, int>> Graph::max_flow(Graph &graph, int s, int t) {
 
     // initial residualAdjacentList
     Graph residualGraph(graph);
+
+    // store all matches
+    vector<pair<int, int>> matches;
 
     // store the path found by bfs
     int parent[residualGraph.max_node_id + 1];
 
     int maximum_flow = 0;
     while (residualGraph.greedy_bfs(s, t, parent)) {
+
+        // initial tuple
+        pair<int, int> match;
 
         // find the min capacity on this path
         int flow = INT_MAX;
@@ -161,62 +168,69 @@ int Graph::max_flow(Graph &graph, int s, int t) {
         for (int v = t; v != s; v = parent[v]) {
             residualGraph.change_weight(parent[v], v, -flow);
             residualGraph.change_weight(v, parent[v], flow);
+
+            // return the match
+            if (parent[v] == s) {
+                match.first = v;
+                match.second = parent[t];
+                break;
+            }
         }
 
         maximum_flow += flow;
+
+        // store this match
+        matches.emplace_back(match);
     }
 
-    return maximum_flow;
+    return matches;
 }
 
 
 /////////////////////////////////////////////////////////////////////////////////
 
 int main() {
-    vector<int> flows;
-    int _size = 1;
-    while (_size-- > 0) {
-        int n_request, n_stu, n_prof, n_time;
-        scanf("%d%d%d%d", &n_request, &n_stu, &n_prof, &n_time);
-        // cin >> n_request >> n_stu >> n_prof >> n_time;
-        int node_size = n_time * (n_prof + n_stu);
 
-        Graph g;
-        g.add_node(node_size + 1);  // s
-        g.add_node(node_size + 2);  // t
-
-        // vector<Pair> prof_time;
-        int node_offset = n_prof * n_time;
-        for (int i = 0; i < n_time; ++i) {
-            for (int j = 0; j < n_prof; ++j) {
-                // prof_time.emplace_back(Pair(j, i));
-                g.add_node(i * n_prof + j);
-                g.add_edge(i * n_prof + j, node_size + 2, 1);
-            }
-            for (int k = 0; k < n_stu; ++k) {
-                // stu_time.emplace_back(Pair(k, i));
-                g.add_node(node_offset + i * n_stu + k);
-                g.add_edge(node_size + 1, node_offset + i * n_stu + k, 1);
-            }
+    int n_request, n_stu, n_prof, n_time;
+    scanf("%d%d%d%d", &n_request, &n_stu, &n_prof, &n_time);
+    // cin >> n_request >> n_stu >> n_prof >> n_time;
+    int node_size = n_time * (n_prof + n_stu);
+    Graph g;
+    g.add_node(node_size + 1);  // s
+    g.add_node(node_size + 2);  // t
+    // vector<Pair> prof_time;
+    int node_offset = n_prof * n_time;
+    for (int i = 0; i < n_time; ++i) {
+        for (int j = 0; j < n_prof; ++j) {
+            // prof_time.emplace_back(Pair(j, i));
+            g.add_node(i * n_prof + j);
+            g.add_edge(i * n_prof + j, node_size + 2, 1);
         }
-
-        while (n_request-- > 0) {
-            int stu, prof, time;
-            scanf("%d%d%d", &stu, &prof, &time);
-            // cin >> stu >> prof >> time;
-            stu--;
-            prof--;
-            time--;
-            g.add_edge(time * n_stu + stu + node_offset, time * n_prof + prof, 1);
+        for (int k = 0; k < n_stu; ++k) {
+            // stu_time.emplace_back(Pair(k, i));
+            g.add_node(node_offset + i * n_stu + k);
+            g.add_edge(node_size + 1, node_offset + i * n_stu + k, 1);
         }
+    }
+    while (n_request-- > 0) {
+        int stu, prof, time;
+        scanf("%d%d%d", &stu, &prof, &time);
+        // cin >> stu >> prof >> time;
+        stu--;
+        prof--;
+        time--;
+        g.add_edge(time * n_stu + stu + node_offset, time * n_prof + prof, 1);
+    }
+    vector<pair<int, int>> matches = Graph::max_flow(g, node_size + 1, node_size + 2);
+    // cout << max_flow << endl;
+    cout << "Number of matches is " << matches.size() << endl;
+    for (auto &match: matches) {
+        int t1 = match.second / n_prof;
+        // int t2 = (match.first - node_offset) / n_stu;
+        int p = match.second % n_prof;
+        int s = (match.first - node_offset) % n_stu;
+        cout << "Student " << s << " meets Professor " << p << " at time " << t1 << endl;
+    }
 
-        int max_flow = Graph::max_flow(g, node_size + 1, node_size + 2);
-        // cout << max_flow << endl;
-        flows.emplace_back(max_flow);
-    }
-    cout << endl << endl;
-    for (auto &i: flows) {
-        cout << i << endl;
-    }
     return 0;
 }
